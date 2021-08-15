@@ -27,7 +27,6 @@ from discord.ext import *
 from discord.ext.commands import *
 from ctypes import *
 from datetime import datetime
-from discord import Webhook, AsyncWebhookAdapter
 import aiohttp
 import asyncpg
 
@@ -55,7 +54,7 @@ bot = commands.Bot(command_prefix = get_prefix, intents=intents, case_insensitiv
 bot.remove_command('help')
 
 async def create_db_pool():
-    bot.db = await asyncpg.create_pool(database = "tutorial", user = "postgres", password= "20266137" )
+    bot.db = await asyncpg.create_pool(database = "problock", user = "postgres", password= "12345678" )
     print("Connected to the DataBase.")
 
 
@@ -71,17 +70,15 @@ async def on_ready():
 
 @bot.command()
 @commands.has_permissions(administrator=True)
-async def setprefix(ctx, new_prefix):
-    await bot.db.execute('UPDATE guilds SET prefix = $1 WHERE guild_id = $2', new_prefix, ctx.guild.id)
-    await ctx.send(f"The prefix has been updated! New prefix: `{new_prefix}`")
+async def setprefix(ctx, prefix):
+    await bot.db.execute('UPDATE guilds SET prefix = $1 WHERE guild_id = $2', prefix, ctx.guild.id)
+    await ctx.send(f"The prefix has been updated! New prefix: `{prefix}`")
 
     try:
-        the_guild = ctx.guild
-        author = ctx.author
-        the_channel = discord.utils.get(the_guild.text_channels, name="mod-logs")
+        the_channel = discord.utils.get(ctx.guild.text_channels, name="mod-logs")
         embed = discord.Embed(title="Prefix Updated", color=0xD708CC)
-        embed.add_field(name="Moderator:", value=f"{author.mention}", inline=True)
-        embed.add_field(name="New Prefix:", value=f"{new_prefix}", inline=True)
+        embed.add_field(name="Moderator:", value=f"{ctx.author.mention}", inline=True)
+        embed.add_field(name="New Prefix:", value=f"{prefix}", inline=True)
         embed.add_field(name="Old Prefix:", value=f"{ctx.prefix}", inline=True)
         embed.timestamp = datetime.utcnow()
         await the_channel.send(embed=embed)
@@ -115,7 +112,7 @@ async def helpmoderation(ctx):
 @bot.command(description = "Shutsdown the bot.")
 @commands.is_owner()
 async def shutdown(ctx):
-    embed = discord.Embed(title="Shutting down.", color=0xD708CC, description=f"Shutting down. This will take up to two minute.")
+    embed = discord.Embed(title="Shutting down.", color=0xD708CC, description="Shutting down. This will take up to two minute.")
     await ctx.send(embed=embed)
     await bot.close()
 
@@ -161,36 +158,6 @@ async def restart(ctx):
     os.execl(sys.executable, sys.executable, *sys.argv)
 
 
-
-#Info command for the bot
-import platform # For stats
-pythonVersion = platform.python_version()
-dpyVersion = discord.__version__
-host = platform
-
-
-@bot.command(description = "Information about this bot.")
-async def info(ctx):
-
-    all_members_embed_list = []
-
-    for x in bot.get_all_members():
-        all_members_embed_list.append(x)
-
-        bot_embed_guilds = []
-
-        for t in bot.guilds:
-            bot_embed_guilds.append(t)
-
-    embed = discord.Embed(title="Bot Info", description="General information about Profanity Blocker", color=0xD708CC)
-    embed.add_field(name="Bot developers:", value="User319183#3149, Thewizzzzzz1338#6367", inline=True)
-    embed.add_field(name="Guild Count:", value=f"{len(bot_embed_guilds)}", inline=True)
-    # embed.add_field(name="Python Version:", value=f"{pythonVersion}", inline=True)
-    # embed.add_field(name="Discord.py Version:", value=f"{dpyVersion}", inline=True)
-    embed.add_field(name="Website:", value=f"https://profanityblocker.org")
-    await ctx.send(embed=embed)
-
-
 @bot.command(description = "Vote for the bot on Top.GG")
 async def vote(ctx):
     embed = discord.Embed(title="Top.GG Vote", description="You can vote for the bot on Top.GG! Here's the link https://top.gg/bot/834812191277973564", color=0xD708CC)
@@ -201,24 +168,21 @@ async def vote(ctx):
 @bot.command(description = "Ban the user.")
 @commands.has_permissions(ban_members=True)
 async def ban(ctx, member, *, reason='None'):
-    if reason is None: # Step 2 - part 1
-        reason = "Not specificed." # Step 2 - part 2
-    try: # Step 4 - part 1
+    if reason is None:
+        reason = "Not specificed."
+    try:
         await ctx.guild.ban(discord.Object(id=member), reason=reason)
-    except Exception as e: # Step 4 - part 2
+    except Exception as e:
         return
     embed = discord.Embed(title="Member Banned", description=f"**{member}**, has been banned..", color=0xD708CC)
     embed.timestamp = datetime.utcnow()
     await ctx.send(embed=embed)
 
     try:
-
-        the_guild = ctx.guild
-        author = ctx.author
-        the_channel = discord.utils.get(the_guild.text_channels, name="mod-logs")
+        the_channel = discord.utils.get(ctx.guild.text_channels, name="mod-logs")
         embed = discord.Embed(title="Member Banned", color=0xD708CC)
         embed.add_field(name="Member's ID:", value=f"{member}", inline=True)
-        embed.add_field(name="Moderator:", value=f"{author.mention}", inline=True)
+        embed.add_field(name="Moderator:", value=f"{ctx.author.mention}", inline=True)
         embed.add_field(name="Reason:", value=f"{reason}", inline=False)
         embed.timestamp = datetime.utcnow()
         await the_channel.send(embed=embed)
@@ -231,26 +195,24 @@ async def ban(ctx, member, *, reason='None'):
 #unban command
 @bot.command()
 @commands.has_permissions(ban_members=True)
-async def unban(ctx, user: discord.User, *, reason='Reason has not been specified.'): # Step 1
-    guild = ctx.guild # Step 3
-    try: # Step 4 - part 1
-        await guild.unban(user, reason=reason) # Step 5
-    except exception as e: # Step 4 - part 2
-        return await ctx.send(e) # Step 4 - part 3
+async def unban(ctx, user: discord.User, *, reason='Reason has not been specified.'):
+    guild = ctx.guild
+    try:
+        await guild.unban(user, reason=reason)
+    except exception as e:
+        return await ctx.send(e)
     embed = discord.Embed(title="Member Unbanned", description=f"**{user}**, has been unbanned.", color=0xD708CC)
     embed.timestamp = datetime.utcnow()
     await ctx.send(embed=embed)
 
     try:
-        the_guild = ctx.guild
-        author = ctx.author
-        the_channel = discord.utils.get(the_guild.text_channels, name="mod-logs")
+        logchannel = discord.utils.get(ctx.guild.text_channels, name="mod-logs")
         embed = discord.Embed(title="Member Unbanned", color=0xD708CC)
         embed.add_field(name="Member's ID:", value=f"{user}", inline=True)
-        embed.add_field(name="Moderator:", value=f"{author.mention}", inline=True)
+        embed.add_field(name="Moderator:", value=f"{ctx.author.mention}", inline=True)
         embed.add_field(name="Reason:", value=f"{reason}", inline=False)
         embed.timestamp = datetime.utcnow()
-        await the_channel.send(embed=embed)
+        await logchannel.send(embed=embed)
 
     except:
         pass
@@ -270,14 +232,12 @@ async def clear(ctx, num: int, target: discord.Member=None):
     await ctx.send(f'**{len(deleted)}/{num}** messages have been deleted. This message will auto-delete after 10 seconds.', delete_after=10)
 
     try:
-        the_guild = ctx.guild
-        author = ctx.author
-        the_channel = discord.utils.get(the_guild.text_channels, name="mod-logs")
+        logchannel = discord.utils.get(ctx.guild.text_channels, name="mod-logs")
         embed = discord.Embed(title="Messages Cleared", color=0xD708CC)
-        embed.add_field(name="Moderator:", value=f"{author.mention}", inline=True)
+        embed.add_field(name="Moderator:", value=f"{ctx.author.mention}", inline=True)
         embed.add_field(name="Amount Of Cleared Messages:", value=f"{len(deleted)}/{num} messages", inline=False)
         embed.timestamp = datetime.utcnow()
-        await the_channel.send(embed=embed)
+        await logchannel.send(embed=embed)
     except:
         pass
 
@@ -291,8 +251,7 @@ async def warn(ctx, member:discord.Member, *, reason='Reason has not been specif
         return
 
 
-    guild = ctx.guild
-    warnedRole = discord.utils.get(guild.roles, name="Warned")
+    warnedRole = discord.utils.get(ctx.guild.roles, name="Warned")
 
     if not warnedRole:
         warnedRole = await guild.create_role(name="Warned")
@@ -302,16 +261,14 @@ async def warn(ctx, member:discord.Member, *, reason='Reason has not been specif
     await ctx.send(embed=embed)
 
     try:
-        the_guild = ctx.guild
-        author = ctx.author
-        the_channel = discord.utils.get(the_guild.text_channels, name="mod-logs")
+        logchannel = discord.utils.get(ctx.guild.text_channels, name="mod-logs")
         embed = discord.Embed(title="Member Warned", color=0xD708CC)
         embed.add_field(name="Member", value=f"{member.mention}", inline=True)
-        embed.add_field(name="Moderator", value=f"{author.mention}", inline=True)
+        embed.add_field(name="Moderator", value=f"{ctx.author.mention}", inline=True)
         embed.add_field(name="Reason", value=f"{reason}", inline=False)
         embed.set_thumbnail(url=member.avatar_url)
         embed.timestamp = datetime.utcnow()
-        await the_channel.send(embed=embed)
+        await logchannel.send(embed=embed)
 
     except:
         pass
@@ -328,11 +285,10 @@ async def mute(ctx, member: discord.Member, *, reason='Reason has not been speci
         await ctx.send("Bot's are not allowed to be muted!")
         return
 
-    guild = ctx.guild
-    mutedRole = discord.utils.get(guild.roles, name="Muted")
+    mutedRole = discord.utils.get(ctx.guild.roles, name="Muted")
 
     if not mutedRole:
-        mutedRole = await guild.create_role(name="Muted")
+        mutedRole = await ctx.guild.create_role(name="Muted")
 
         for channel in guild.channels:
             await channel.set_permissions(mutedRole, speak=False, send_messages=False, read_message_history=True, read_messages=False)
@@ -343,16 +299,14 @@ async def mute(ctx, member: discord.Member, *, reason='Reason has not been speci
 
 
     try:
-        the_guild = ctx.guild
-        author = ctx.author
-        the_channel = discord.utils.get(the_guild.text_channels, name="mod-logs")
+        logchannel = discord.utils.get(ctx.guild.text_channels, name="mod-logs")
         embed = discord.Embed(title="Member Muted", color=0xD708CC)
         embed.add_field(name="Member:", value=f"{member.mention}", inline=True)
-        embed.add_field(name="Moderator:", value=f"{author.mention}", inline=True)
+        embed.add_field(name="Moderator:", value=f"{ctx.author.mention}", inline=True)
         embed.add_field(name="Reason:", value=f"{reason}", inline=False)
         embed.set_thumbnail(url=member.avatar_url)
         embed.timestamp = datetime.utcnow()
-        await the_channel.send(embed=embed)
+        await logchannel.send(embed=embed)
 
     except:
         pass
@@ -376,16 +330,14 @@ async def unmute(ctx, member: discord.Member, *, reason='Reason has not been spe
     await ctx.send(embed=embed)
 
     try:
-        the_guild = ctx.guild
-        author = ctx.author
-        the_channel = discord.utils.get(ctx.guild.text_channels, name="mod-logs")
+        logchannel = discord.utils.get(ctx.guild.text_channels, name="mod-logs")
         embed = discord.Embed(title="Member Unmuted", color=0xD708CC)
-        embed.add_field(name="Member", value=f"{member.mention}", inline=True)
+        embed.add_field(name="Member", value=f"{ctx.author.mention}", inline=True)
         embed.add_field(name="Moderator", value=f"{author.mention}", inline=True)
         embed.add_field(name="Reason", value=f"{reason}", inline=False)
         embed.set_thumbnail(url=member.avatar_url)
         embed.timestamp = datetime.utcnow()
-        await the_channel.send(embed=embed)
+        await logchannel.send(embed=embed)
 
     except:
         pass
@@ -402,16 +354,14 @@ async def kick(ctx, member: discord.Member, *, reason='Reason has not been speci
 
 
     try:
-        the_guild = ctx.guild
-        author = ctx.author
-        the_channel = discord.utils.get(the_guild.text_channels, name="mod-logs")
+        logchannel = discord.utils.get(ctx.guild.text_channels, name="mod-logs")
         embed = discord.Embed(title="Member Kicked", color=0xD708CC)
         embed.add_field(name="Member", value=f"{member.mention}", inline=True)
         embed.add_field(name="Moderator", value=f"{author.mention}", inline=True)
         embed.add_field(name="Reason", value=f"{reason}", inline=False)
         embed.set_thumbnail(url=member.avatar_url)
         embed.timestamp = datetime.utcnow()
-        await the_channel.send(embed=embed)
+        await logchannel.send(embed=embed)
 
     except:
         pass
@@ -432,16 +382,13 @@ async def slowmode(ctx, seconds: int):
     await ctx.send(embed=embed)
 
     try:
-
-        the_guild = ctx.guild
-        author = ctx.author
-        the_channel = discord.utils.get(the_guild.text_channels, name="mod-logs")
+        logchannel = discord.utils.get(ctx.guild.text_channels, name="mod-logs")
         embed = discord.Embed(title="Slowmode:", color=0xD708CC)
-        embed.add_field(name="Moderator:", value=f"{author.mention}", inline=True)
+        embed.add_field(name="Moderator:", value=f"{ctx.author.mention}", inline=True)
         embed.add_field(name="Slowmode set to:", value=f"{seconds} seconds", inline=False)
         embed.set_thumbnail(url=author.avatar_url)
         embed.timestamp = datetime.utcnow()
-        await the_channel.send(embed=embed)
+        await logchannel.send(embed=embed)
 
     except:
         pass
@@ -459,16 +406,13 @@ async def lock(ctx):
     await ctx.send(embed=embed)
 
     try:
-
-        the_guild = ctx.guild
-        author = ctx.author
-        the_channel = discord.utils.get(the_guild.text_channels, name="mod-logs")
+        logchannel = discord.utils.get(ctx.guild.text_channels, name="mod-logs")
         embed = discord.Embed(title="Channel Locked", color=0xD708CC)
-        embed.add_field(name="Moderator", value=f"{author.mention}", inline=True)
+        embed.add_field(name="Moderator", value=f"{ctx.author.mention}", inline=True)
         embed.add_field(name="Channel", value=f"{ctx.channel.mention}", inline=False)
         embed.set_thumbnail(url=author.avatar_url)
         embed.timestamp = datetime.utcnow()
-        await the_channel.send(embed=embed)
+        await logchannel.send(embed=embed)
 
     except:
         pass
@@ -484,91 +428,16 @@ async def unlock(ctx):
 
 
     try:
-
-
-        the_guild = ctx.guild
-        author = ctx.author
-        the_channel = discord.utils.get(the_guild.text_channels, name="mod-logs")
+        logchannel = discord.utils.get(ctx.guild.text_channels, name="mod-logs")
         embed = discord.Embed(title="Channel Unlocked", color=0xD708CC)
-        embed.add_field(name="Moderator", value=f"{author.mention}", inline=True)
+        embed.add_field(name="Moderator", value=f"{ctx.author.mention}", inline=True)
         embed.add_field(name="Channel", value=f"{ctx.channel.mention}", inline=False)
         embed.set_thumbnail(url=author.avatar_url)
         embed.timestamp = datetime.utcnow()
-        await the_channel.send(embed=embed)
+        await logchannel.send(embed=embed)
 
     except:
         pass
-
-
-
-#disable embeds
-# @bot.command(description="Syntax: +disable embed")
-# @commands.cooldown(1, 10, commands.BucketType.user)
-# @commands.has_permissions(administrator = True)
-# async def disable(ctx, setting):
-#     if setting == 'embed':
-#         with open('embed.json', 'r') as f:
-#             embed = json.load(f)
-        
-#         embed[str(ctx.guild.id)] = 0
-
-#         with open('embed.json', 'w') as f:
-#             json.dump(embed, f, indent=4)
-#     embed = discord.Embed(title="Embeds Disabled", description=f"The setting `{setting}` has been disabled.", color=3447003)
-#     embed.timestamp = datetime.utcnow()
-#     await ctx.send(embed=embed)
-#     await bot.process_commands(message)
-
-#     the_guild = ctx.guild
-#     author = ctx.author
-#     the_channel = discord.utils.get(the_guild.text_channels, name="mod-logs")
-#     embed = discord.Embed(title="Embeds Disabled", color=3447003)
-#     embed.add_field(name="Moderator:", value=f"{author.mention}", inline=True)
-#     embed.set_thumbnail(url=author.avatar_url)
-#     embed.timestamp = datetime.utcnow()
-#     await the_channel.send(embed=embed)
-
-
-
-#enable embeds
-# @bot.command(description="Syntax: +enable embed")
-# @commands.cooldown(1, 10, commands.BucketType.user)
-# @commands.has_permissions(administrator = True)
-# async def enable(ctx, setting):
-#     if setting == 'embed':
-#         with open('embed.json', 'r') as f:
-#             embed = json.load(f)
-        
-#         embed[str(ctx.guild.id)] = 1
-
-#         with open('embed.json', 'w') as f:
-#             json.dump(embed, f, indent=4)
-#     embed = discord.Embed(title="Embeds Disabled", description=f"The setting `{setting}` has been enabled.", color=3447003)
-#     await bot.process_commands(message)
-#     embed.timestamp = datetime.utcnow()
-#     await ctx.send(embed=embed)
-
-#     the_guild = ctx.guild
-#     author = ctx.author
-#     the_channel = discord.utils.get(the_guild.text_channels, name="mod-logs")
-#     embed = discord.Embed(title="Embeds Enabled", color=3447003)
-#     embed.add_field(name="Moderator:", value=f"{author.mention}", inline=True)
-#     embed.set_thumbnail(url=author.avatar_url)
-#     embed.timestamp = datetime.utcnow()
-#     await the_channel.send(embed=embed)
-
-
-#open embed.json to put the default embed (1)
-# @bot.event
-# async def on_guild_join(guild):
-
-#     with open("embed.json", "r") as f:
-#         embed = json.load(f)
-
-#     embed[str(guild.id)] = 1
-
-#     with open('embed.json', 'w') as f:
-#         json.dump(embed, f, indent=4)
 
 
 
@@ -599,7 +468,6 @@ async def on_guild_remove(guild):
 #DM owner when get suggested to add a bad word
 @bot.command(description="Suggest bad words for the developers to add.")
 async def add(ctx, *, badword):
-    msg_dump_channel = 861002914848047105
 
     channel = bot.get_channel(861002914848047105)
     embed = discord.Embed(title="Bad Word Suggested", description=f"{ctx.author.mention} has suggested **{badword}** to be added.", color=0xD708CC)
@@ -654,250 +522,12 @@ async def helpme(ctx, reason):
     await channel.send(f"{ctx.author.mention} used the `helpme` command in in **{ctx.guild.name}**. Reason: **{reason}**    Invite:  {invite}")
 
 
-#send webhooks
-# from discord import Webhook, AsyncWebhookAdapter
-# import aiohttp
-
-# @bot.command()
-# async def webhook_send(ctx):
-#     async with aiohttp.ClientSession() as session:
-#         webhook = Webhook.from_url('Webhook_URL', adapter=AsyncWebhookAdapter(session))
-
-#         e = discord.Embed(title="Title", description="Description")
-#         e.add_field(name="Test1", value="Test2")
-#         e.add_field(name="Test3", value="Test4")
-
-#         await webhook.send(embed=e)
-
-
 
 @bot.command(description="Debug the bot to get it's permissions that are enabled and disabled.")
 async def debug(ctx):
     embed = discord.Embed(title="Permissions", description=f"{dict(ctx.me.guild_permissions)}", color=0xD708CC)
     embed.timestamp = datetime.utcnow()
     await ctx.send(embed=embed)
-
-    
-
-
-#make bot send msg when bot joins server
-@bot.event
-async def on_guild_join(guild):
-    for channel in guild.text_channels:
-        if channel.permissions_for(guild.me).send_messages:
-            embed = discord.Embed(title="Thanks for inviting me!", description="Thanks for inviting me! Profanity Blocker is a bot that keeps your server safe by deleting messages that contain bad words. My default prefix is `+`. You can also use my mention as a secondary prefix. You can view our website for more details on this bot. Website: https://profanityblocker.org.", color=0xD708CC)
-            embed.timestamp = datetime.utcnow()
-            await channel.send(embed=embed)
-        break
-
-#logging system
-@bot.listen()
-async def on_message_edit(before, after):
-    if before.content == after.content:
-        return
-
-    try: 
-        the_guild = before.guild
-        the_channel = discord.utils.get(the_guild.text_channels, name="mod-logs")
-        the_author = before.author
-        if the_author.bot == True:
-            return
-
-        embed = discord.Embed(title="Message Edited", description=f"Message edited by {after.author.mention} in {after.channel.mention}", color=3447003)
-        embed.add_field(name="Before Edit", value=f"{before.content}", inline=False)
-        embed.add_field(name="After Edit", value=f"{after.content}", inline=False)
-        embed.add_field(name="Author's ID", value=f"{after.author.id}", inline=False)
-        embed.add_field(name="Message link", value=f"{after.jump_url}", inline=False)
-        embed.timestamp = datetime.utcnow()
-        await the_channel.send(embed=embed)
-
-    except:
-        pass
-
-
-
-
-@bot.listen()
-async def on_raw_message_delete(payload):
-    msg=payload.cached_message
-
-    if msg.author == bot.user:
-        return
-    if msg.author.bot: 
-        return
-        
-    try:
-        the_guild = msg.guild
-        the_channel = discord.utils.get(the_guild.text_channels, name="mod-logs")
-        the_author = msg.author
-        if msg.author == True:
-            return
-        embed = discord.Embed(title="Deleted Message", description=f"Message deleted by {msg.author.mention} in {msg.channel.mention}", color=15158332)
-        embed.add_field(name="Deleted Message", value=f"{msg.content}", inline=False)
-        embed.add_field(name="Author's ID", value=f"{msg.author.id}", inline=False)
-        embed.timestamp = datetime.utcnow()
-        await the_channel.send(embed=embed)
-
-    except:
-        pass
-
-
-
-symbols = string.punctuation + string.digits
-letters = string.ascii_letters
-
-with open("test.txt") as file:
-    test2 = file.read().split('\n')
-
-@bot.listen("on_message")
-async def on_message(message):
-    if message.author == bot.user:
-        return
-    if message.author.bot: 
-        return
-
-    guild = message.guild
-    bypassedRole = discord.utils.get(guild.roles, name="Bypassed")
-
-
-    if bypassedRole in message.author.roles:
-        return
-
-    for word in test2:
-        regex_match_true = re.compile(fr"[{symbols}]*".join(list(word)), re.IGNORECASE)
-        regex_match_none = re.compile(fr"([{letters}]+{word})|({word}[{letters}]+)", re.IGNORECASE)
-        if regex_match_true.search(message.content) and regex_match_none.search(message.content) is None:
-            await message.delete()
-            embed = discord.Embed(title="Message Deleted", color=0xD708CC, description= f"{message.author.mention}, You're not allowed to say that.")
-            embed.timestamp = datetime.utcnow()
-            await message.channel.send(embed=embed)
-
-
-            the_guild = message.guild
-            the_channel = discord.utils.get(the_guild.text_channels, name="badword-logs")
-            the_author = message.author
-
-            embed = discord.Embed(title="Bad Word Blocked", description=f"{message.author.mention} sent a bad word", color=15158332)
-            embed.add_field(name="Blocked Message", value=f"{message.content}", inline=False)
-            embed.add_field(name="Channel", value=f"{message.channel.mention}", inline=False)
-            embed.timestamp = datetime.utcnow()
-            await the_channel.send(embed=embed)
-
-    
-
-
-with open("badwords.txt", encoding="utf8") as file:
-    blacklist = file.read().split('\n')
-
-@bot.event
-async def on_message(message):
-    message.content = message.content.lower()
-    message.content = discord.utils.remove_markdown(message.content)
-    if message.author == bot.user:
-        return
-    if message.author.bot: 
-        return
-
-    guild = message.guild
-    bypassedRole = discord.utils.get(guild.roles, name="Bypassed")
-
-
-    if bypassedRole in message.author.roles:
-        await bot.process_commands(message)
-        return
-
-    for word in blacklist:
-        if message.content.count(word) > 0:
-            await message.delete()
-            embed = discord.Embed(title="Message Deleted", color=0xD708CC, description= f"{message.author.mention}, You're not allowed to say that.")
-            embed.timestamp = datetime.utcnow()
-            await message.channel.send(embed=embed)
-
-
-            the_guild = message.guild
-            the_channel = discord.utils.get(the_guild.text_channels, name="badword-logs")
-            the_author = message.author
-
-            embed = discord.Embed(title="Bad Word Blocked", description=f"{message.author.mention} sent a bad word", color=15158332)
-            embed.add_field(name="Blocked Message", value=f"{message.content}", inline=False)
-            embed.add_field(name="Channel", value=f"{message.channel.mention}", inline=False)
-            embed.timestamp = datetime.utcnow()
-            await the_channel.send(embed=embed)
-
-    await bot.process_commands(message)
-
-
-
-#can't bypass a edit with bad word
-@bot.event
-async def on_message_edit(before, after):
-    if after.author == bot.user:
-        return
-    if after.author.bot: 
-        return
-    after.content = after.content.lower()
-    after.content = discord.utils.remove_markdown(after.content)
-    bypassedRole = discord.utils.get(after.guild.roles, name="Bypassed")
-
-    if bypassedRole in after.author.roles:
-        return
-
-    for word in blacklist:
-        if after.content.count(word) > 0:
-            await after.delete()
-            embed = discord.Embed(title="Message Deleted", color=0xD708CC, description= f"{after.author.mention}, You're not allowed to say that.")
-            embed.timestamp = datetime.utcnow()
-            await after.channel.send(embed=embed)
-
-
-            the_guild = after.guild
-            the_channel = discord.utils.get(the_guild.text_channels, name="badword-logs")
-            the_author = after.author
-
-            embed = discord.Embed(title="Bad Word Blocked", description=f"{after.author.mention} edited their message to a bad word", color=15158332)
-            embed.add_field(name="Blocked Message", value=f"{after.content}", inline=False)
-            embed.add_field(name="Channel", value=f"{after.channel.mention}", inline=False)
-            embed.timestamp = datetime.utcnow()
-            await the_channel.send(embed=embed)
-
-        await bot.process_commands(after)
-
-
-
-
-
-@bot.listen("on_message_edit")
-async def on_message_edit(before, after):
-    if after.author == bot.user:
-        return
-    if after.author.bot: 
-        return
-    after.content = after.content.lower()
-    after.content = discord.utils.remove_markdown(after.content)
-    bypassedRole = discord.utils.get(after.guild.roles, name="Bypassed")
-
-    if bypassedRole in after.author.roles:
-        return
-
-    for word in test2:
-        regex_match_true = re.compile(fr"[{symbols}]*".join(list(word)), re.IGNORECASE)
-        regex_match_none = re.compile(fr"([{letters}]+{word})|({word}[{letters}]+)", re.IGNORECASE)
-        if regex_match_true.search(after.content) and regex_match_none.search(after.content) is None:
-            await after.delete()
-            embed = discord.Embed(title="Message Deleted", color=0xD708CC, description= f"{after.author.mention}, You're not allowed to say that.")
-            embed.timestamp = datetime.utcnow()
-            await after.channel.send(embed=embed)
-
-
-            the_guild = after.guild
-            the_channel = discord.utils.get(the_guild.text_channels, name="badword-logs")
-            the_author = after.author
-
-            embed = discord.Embed(title="Bad Word Blocked", description=f"{after.author.mention} edited their message to a bad word", color=15158332)
-            embed.add_field(name="Blocked Message", value=f"{after.content}", inline=False)
-            embed.add_field(name="Channel", value=f"{after.channel.mention}", inline=False)
-            embed.timestamp = datetime.utcnow()
-            await the_channel.send(embed=embed)
 
 
 
@@ -920,13 +550,11 @@ async def bypass(ctx, member: discord.Member):
         await ctx.send("Bot's are automatically bypassed!")
         return
 
-    guild = ctx.guild
     bypassedRole = discord.utils.get(guild.roles, name="Bypassed")
     if bypassedRole in member.roles:
         return await ctx.send(f"{member.mention} is already bypassed!")
 
     try:    
-        guild = ctx.guild
         bypassedRole = discord.utils.get(guild.roles, name="Bypassed")
         await member.add_roles(bypassedRole)
         await ctx.send(f"{member.mention} is now bypassed!")
@@ -938,14 +566,12 @@ async def bypass(ctx, member: discord.Member):
         await member.add_roles(bypassedRole)
         await ctx.send(f"{member.mention} is now bypassed!")
 
-    the_guild = ctx.guild
-    the_channel = discord.utils.get(the_guild.text_channels, name="mod-logs")
-    the_author = ctx.author
+    logchannel = discord.utils.get(ctx.guild.text_channels, name="mod-logs")
 
     embed = discord.Embed(title="Member Bypassed", description=f"{member.mention} is now bypassed.", color=3447003)
     embed.add_field(name="Moderator", value=f"{ctx.author.mention}", inline=False)
     embed.timestamp = datetime.utcnow()
-    await the_channel.send(embed=embed)
+    await logchannel.send(embed=embed)
 
 
 
@@ -957,13 +583,11 @@ async def unbypass(ctx, member: discord.Member):
         await ctx.send("Bot's are automatically bypassed by default!")
         return
 
-    guild = ctx.guild
     bypassedRole = discord.utils.get(ctx.guild.roles, name="Bypassed")
     if bypassedRole not in member.roles:
         return await ctx.send(f"{member.mention} has not been bypassed!")
 
     try:    
-        guild = ctx.guild
         bypassedRole = discord.utils.get(ctx.guild.roles, name="Bypassed")
         await member.remove_roles(bypassedRole)
         await ctx.send(f"{member.mention} has been unbypassed!")
@@ -971,16 +595,14 @@ async def unbypass(ctx, member: discord.Member):
         pass
 
 
-    the_guild = ctx.guild
-    the_channel = discord.utils.get(the_guild.text_channels, name="mod-logs")
-    the_author = ctx.author
+    logchannel = discord.utils.get(ctx.guild.text_channels, name="mod-logs")
 
     embed = discord.Embed(title="Member Unbypassed", description=f"{member.mention} has been unbypassed.", color=15158332)
     embed.add_field(name="Moderator", value=f"{ctx.author.mention}", inline=False)
     embed.timestamp = datetime.utcnow()
-    await the_channel.send(embed=embed)
+    await logchannel.send(embed=embed)
 
 
 
 bot.loop.run_until_complete(create_db_pool())
-bot.run("ODM5ODc5MjA1MjczMjA2Nzg0.YJQEdg.M-IGYZDAvRFmbe7-ESaI3xGnDLU")
+bot.run("") # your token here
