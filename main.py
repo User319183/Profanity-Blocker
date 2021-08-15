@@ -102,7 +102,7 @@ async def helpother(ctx):
     await ctx.send(embed=embed)
 
 
-@bot.command(description = "The help panel for other commands.")
+@bot.command(description = "The help panel for moderation commands.")
 async def helpmoderation(ctx):
     embed = discord.Embed(title="Help Moderation Commands", color=0xD708CC, description= f"1. ban \n 2. unban \n 3. mute \n 4. unmute \n 5. warn \n 6. lock \n 7. unlock \n 8. slowmode \n 9. kick \n 10. clear \n 11. bypass \n 12. unbypass \n 13. add")
     await ctx.send(embed=embed)
